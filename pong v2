@@ -1,0 +1,765 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>Pong Game - Mobile Controls</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background: #000;
+            color: white;
+            overflow: hidden;
+            position: fixed;
+            width: 100%;
+            height: 100%;
+            touch-action: manipulation;
+            user-select: none;
+        }
+
+        #gameContainer {
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+
+        #gameCanvas {
+            border: 2px solid white;
+            background: #000;
+            touch-action: none;
+            box-shadow: 0 0 20px rgba(255, 255, 255, 0.3);
+        }
+
+        /* Mobile Controls */
+        #mobileControls {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(0, 0, 0, 0.95);
+            padding: 15px;
+            border-top: 2px solid #ccc;
+            display: none;
+        }
+
+        #gameButtons {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .game-btn {
+            padding: 12px 24px;
+            font-size: 16px;
+            font-weight: bold;
+            border: 2px solid;
+            border-radius: 8px;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            cursor: pointer;
+            transition: all 0.1s ease;
+        }
+
+        .game-btn:active {
+            transform: scale(0.95);
+        }
+
+        .start-btn { background: #22c55e; border-color: #22c55e; }
+        .pause-btn { background: #eab308; border-color: #eab308; }
+        .restart-btn { background: #ef4444; border-color: #ef4444; }
+        .volume-btn { background: #8b5cf6; border-color: #8b5cf6; }
+
+        #playerControls {
+            display: flex;
+            justify-content: space-between;
+            align-items: end;
+            width: 100%;
+        }
+
+        .player-section {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .control-btn {
+            width: 80px;
+            height: 80px;
+            background: #666;
+            border: 2px solid #999;
+            color: white;
+            font-size: 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.1s ease;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+        }
+
+        .control-btn:active {
+            transform: scale(0.92);
+            box-shadow: inset 0 4px 8px rgba(0, 0, 0, 0.3);
+            border-width: 3px;
+        }
+
+        .player-label {
+            text-align: center;
+            font-size: 12px;
+            font-weight: bold;
+            margin-top: 8px;
+        }
+
+        .center-info {
+            text-align: center;
+            flex: 1;
+            padding: 0 20px;
+        }
+
+        .center-info h3 {
+            font-size: 18px;
+            margin-bottom: 8px;
+        }
+
+        .center-info p {
+            font-size: 12px;
+            opacity: 0.75;
+            line-height: 1.4;
+        }
+
+        /* Game UI Overlays */
+        #gameUI {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            z-index: 10;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 30px;
+            border-radius: 10px;
+            border: 2px solid white;
+        }
+
+        #mobileScore {
+            position: absolute;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: none;
+            z-index: 5;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 8px 16px;
+            border-radius: 8px;
+            border: 1px solid white;
+        }
+
+        .score-display {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .score-item {
+            text-align: center;
+        }
+
+        .score-label {
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .score-value {
+            font-size: 24px;
+            font-family: monospace;
+            font-weight: bold;
+        }
+
+        /* Mobile Detection */
+        @media (max-width: 768px) {
+            #mobileControls {
+                display: block;
+            }
+            
+            #gameCanvas {
+                max-height: 60vh;
+            }
+        }
+
+        /* Hide elements when appropriate */
+        .hidden {
+            display: none !important;
+        }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <canvas id="gameCanvas" width="800" height="600"></canvas>
+        
+        <!-- Game State UI Overlay -->
+        <div id="gameUI">
+            <h2 id="gameTitle">PONG</h2>
+            <div id="scoreDisplay" class="hidden">
+                <div class="score-display">
+                    <div class="score-item">
+                        <div class="score-label">PLAYER 1</div>
+                        <div class="score-value" id="player1Score">0</div>
+                    </div>
+                    <div style="font-size: 24px; font-weight: bold;">-</div>
+                    <div class="score-item">
+                        <div class="score-label">PLAYER 2</div>
+                        <div class="score-value" id="player2Score">0</div>
+                    </div>
+                </div>
+            </div>
+            <p id="gameInstructions">Press SPACE to start, or use mobile controls below</p>
+            <p id="gameControls">Player 1: W/S keys | Player 2: ↑/↓ keys</p>
+        </div>
+
+        <!-- Mobile Score Display (during gameplay) -->
+        <div id="mobileScore">
+            <div class="score-display">
+                <div class="score-item">
+                    <div class="score-label">P1</div>
+                    <div class="score-value" id="mobileP1Score">0</div>
+                </div>
+                <div style="font-size: 16px; font-weight: bold;">-</div>
+                <div class="score-item">
+                    <div class="score-label">P2</div>
+                    <div class="score-value" id="mobileP2Score">0</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Mobile Controls -->
+        <div id="mobileControls">
+            <div id="gameButtons">
+                <button class="game-btn start-btn" id="startBtn">▶ START</button>
+                <button class="game-btn pause-btn hidden" id="pauseBtn">⏸ PAUSE</button>
+                <button class="game-btn restart-btn" id="restartBtn">🔄 RESTART</button>
+                <button class="game-btn volume-btn" id="volumeBtn">🔊</button>
+            </div>
+
+            <div id="playerControls">
+                <div class="player-section">
+                    <button class="control-btn" id="p1Up">↑</button>
+                    <button class="control-btn" id="p1Down">↓</button>
+                    <div class="player-label">PLAYER 1</div>
+                </div>
+
+                <div class="center-info">
+                    <h3>🏓 PONG</h3>
+                    <p>Tap and hold buttons<br>to move paddles</p>
+                </div>
+
+                <div class="player-section">
+                    <button class="control-btn" id="p2Up">↑</button>
+                    <button class="control-btn" id="p2Down">↓</button>
+                    <div class="player-label">PLAYER 2</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Game State Management
+        class GameState {
+            constructor() {
+                this.phase = 'ready'; // ready, playing, paused, ended
+                this.player1Score = 0;
+                this.player2Score = 0;
+                this.winningScore = 10;
+                this.isMuted = true;
+            }
+
+            updatePhase(newPhase) {
+                this.phase = newPhase;
+                this.updateUI();
+            }
+
+            incrementPlayer1Score() {
+                this.player1Score++;
+                if (this.player1Score >= this.winningScore) {
+                    this.phase = 'ended';
+                }
+                this.updateUI();
+            }
+
+            incrementPlayer2Score() {
+                this.player2Score++;
+                if (this.player2Score >= this.winningScore) {
+                    this.phase = 'ended';
+                }
+                this.updateUI();
+            }
+
+            reset() {
+                this.phase = 'ready';
+                this.player1Score = 0;
+                this.player2Score = 0;
+                this.updateUI();
+            }
+
+            togglePause() {
+                this.phase = this.phase === 'playing' ? 'paused' : 'playing';
+                this.updateUI();
+            }
+
+            toggleMute() {
+                this.isMuted = !this.isMuted;
+                document.getElementById('volumeBtn').textContent = this.isMuted ? '🔇' : '🔊';
+                console.log(`Sound ${this.isMuted ? 'muted' : 'unmuted'}`);
+            }
+
+            updateUI() {
+                const gameUI = document.getElementById('gameUI');
+                const gameTitle = document.getElementById('gameTitle');
+                const gameInstructions = document.getElementById('gameInstructions');
+                const gameControls = document.getElementById('gameControls');
+                const scoreDisplay = document.getElementById('scoreDisplay');
+                const startBtn = document.getElementById('startBtn');
+                const pauseBtn = document.getElementById('pauseBtn');
+                const mobileScore = document.getElementById('mobileScore');
+
+                // Update scores
+                document.getElementById('player1Score').textContent = this.player1Score;
+                document.getElementById('player2Score').textContent = this.player2Score;
+                document.getElementById('mobileP1Score').textContent = this.player1Score;
+                document.getElementById('mobileP2Score').textContent = this.player2Score;
+
+                const isMobile = window.innerWidth <= 768;
+
+                switch (this.phase) {
+                    case 'ready':
+                        gameUI.classList.remove('hidden');
+                        gameTitle.textContent = 'PONG';
+                        gameInstructions.textContent = 'Press SPACE to start, or use mobile controls below';
+                        gameControls.classList.remove('hidden');
+                        scoreDisplay.classList.add('hidden');
+                        startBtn.classList.remove('hidden');
+                        pauseBtn.classList.add('hidden');
+                        mobileScore.classList.add('hidden');
+                        break;
+                    
+                    case 'playing':
+                        if (isMobile) {
+                            gameUI.classList.add('hidden');
+                            mobileScore.classList.remove('hidden');
+                        } else {
+                            gameUI.classList.remove('hidden');
+                            gameTitle.textContent = `${this.player1Score} - ${this.player2Score}`;
+                            gameInstructions.textContent = 'First to 10 wins!';
+                            gameControls.classList.remove('hidden');
+                            scoreDisplay.classList.add('hidden');
+                        }
+                        startBtn.classList.add('hidden');
+                        pauseBtn.classList.remove('hidden');
+                        break;
+                    
+                    case 'paused':
+                        gameUI.classList.remove('hidden');
+                        gameTitle.textContent = 'PAUSED';
+                        gameInstructions.textContent = 'Press SPACE to resume';
+                        gameControls.classList.remove('hidden');
+                        scoreDisplay.classList.remove('hidden');
+                        startBtn.classList.remove('hidden');
+                        startBtn.textContent = '▶ RESUME';
+                        pauseBtn.classList.add('hidden');
+                        mobileScore.classList.add('hidden');
+                        break;
+                    
+                    case 'ended':
+                        gameUI.classList.remove('hidden');
+                        const winner = this.player1Score >= this.winningScore ? 'PLAYER 1' : 'PLAYER 2';
+                        gameTitle.textContent = `${winner} WINS!`;
+                        gameInstructions.textContent = 'Press R to restart';
+                        gameControls.classList.add('hidden');
+                        scoreDisplay.classList.remove('hidden');
+                        startBtn.classList.add('hidden');
+                        pauseBtn.classList.add('hidden');
+                        mobileScore.classList.add('hidden');
+                        break;
+                }
+
+                // Reset start button text for next time
+                if (this.phase !== 'paused') {
+                    startBtn.textContent = '▶ START';
+                }
+            }
+        }
+
+        // Game Engine
+        class PongEngine {
+            constructor(canvas, gameState) {
+                this.canvas = canvas;
+                this.ctx = canvas.getContext('2d');
+                this.gameState = gameState;
+
+                // Game settings - matching pygame version
+                this.PADDLE_SPEED = 6;
+                this.BALL_SPEED = 5;
+                this.PADDLE_WIDTH = 10;
+                this.PADDLE_HEIGHT = 100;
+                this.BALL_RADIUS = 8;
+
+                this.initializeGame();
+                this.setupAudio();
+            }
+
+            initializeGame() {
+                // Paddles - positioned like pygame version
+                this.player1 = {
+                    x: 50,
+                    y: this.canvas.height / 2 - this.PADDLE_HEIGHT / 2,
+                    width: this.PADDLE_WIDTH,
+                    height: this.PADDLE_HEIGHT,
+                    speed: this.PADDLE_SPEED,
+                    direction: 0
+                };
+
+                this.player2 = {
+                    x: this.canvas.width - 50 - this.PADDLE_WIDTH,
+                    y: this.canvas.height / 2 - this.PADDLE_HEIGHT / 2,
+                    width: this.PADDLE_WIDTH,
+                    height: this.PADDLE_HEIGHT,
+                    speed: this.PADDLE_SPEED,
+                    direction: 0
+                };
+
+                this.resetBall();
+            }
+
+            setupAudio() {
+                // Create audio elements
+                this.hitSound = new Audio();
+                this.hitSound.src = 'data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmEaBzdYyKSacBgJWKvU7+OLQAUvhdj2yWGmA'; // Simple beep sound
+                this.successSound = new Audio();
+                this.successSound.src = 'data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmEaBzdYyKSacBgJWKvU7+OLQAUvhdj2yWGmA'; // Success sound
+            }
+
+            resetBall() {
+                this.ball = {
+                    x: this.canvas.width / 2,
+                    y: this.canvas.height / 2,
+                    radius: this.BALL_RADIUS,
+                    speedX: this.BALL_SPEED * (Math.random() > 0.5 ? 1 : -1),
+                    speedY: this.BALL_SPEED * (Math.random() - 0.5),
+                    maxSpeed: this.BALL_SPEED * 1.5
+                };
+            }
+
+            setPlayer1Direction(direction) {
+                this.player1.direction = direction;
+            }
+
+            setPlayer2Direction(direction) {
+                this.player2.direction = direction;
+            }
+
+            reset() {
+                this.player1.y = this.canvas.height / 2 - this.PADDLE_HEIGHT / 2;
+                this.player1.direction = 0;
+                this.player2.y = this.canvas.height / 2 - this.PADDLE_HEIGHT / 2;
+                this.player2.direction = 0;
+                this.resetBall();
+            }
+
+            update() {
+                if (this.gameState.phase !== 'playing') return;
+
+                this.updatePaddles();
+                this.updateBall();
+                this.checkCollisions();
+            }
+
+            updatePaddles() {
+                // Update player 1
+                this.player1.y += this.player1.direction * this.player1.speed;
+                this.player1.y = Math.max(0, Math.min(this.canvas.height - this.player1.height, this.player1.y));
+
+                // Update player 2
+                this.player2.y += this.player2.direction * this.player2.speed;
+                this.player2.y = Math.max(0, Math.min(this.canvas.height - this.player2.height, this.player2.y));
+            }
+
+            updateBall() {
+                this.ball.x += this.ball.speedX;
+                this.ball.y += this.ball.speedY;
+            }
+
+            checkCollisions() {
+                // Ball collision with top/bottom walls
+                if (this.ball.y - this.ball.radius <= 0 || this.ball.y + this.ball.radius >= this.canvas.height) {
+                    this.ball.speedY *= -1;
+                    this.ball.y = Math.max(this.ball.radius, Math.min(this.canvas.height - this.ball.radius, this.ball.y));
+                    this.playHitSound();
+                }
+
+                // Ball collision with paddles
+                if (this.ballPaddleCollision(this.player1) || this.ballPaddleCollision(this.player2)) {
+                    this.ball.speedX *= -1;
+                    
+                    // Add some randomness
+                    this.ball.speedY += (Math.random() - 0.5) * 2;
+                    
+                    // Limit ball speed
+                    if (Math.abs(this.ball.speedY) > this.ball.maxSpeed) {
+                        this.ball.speedY = this.ball.speedY > 0 ? this.ball.maxSpeed : -this.ball.maxSpeed;
+                    }
+                    
+                    // Increase ball speed slightly
+                    this.ball.speedX *= 1.05;
+                    this.ball.speedY *= 1.05;
+                    
+                    this.playHitSound();
+                }
+
+                // Ball goes off screen (scoring)
+                if (this.ball.x + this.ball.radius < 0) {
+                    this.playSuccessSound();
+                    this.gameState.incrementPlayer2Score();
+                    this.resetBall();
+                } else if (this.ball.x - this.ball.radius > this.canvas.width) {
+                    this.playSuccessSound();
+                    this.gameState.incrementPlayer1Score();
+                    this.resetBall();
+                }
+            }
+
+            ballPaddleCollision(paddle) {
+                return (
+                    this.ball.x - this.ball.radius < paddle.x + paddle.width &&
+                    this.ball.x + this.ball.radius > paddle.x &&
+                    this.ball.y - this.ball.radius < paddle.y + paddle.height &&
+                    this.ball.y + this.ball.radius > paddle.y
+                );
+            }
+
+            playHitSound() {
+                if (!this.gameState.isMuted) {
+                    this.hitSound.currentTime = 0;
+                    this.hitSound.volume = 0.3;
+                    this.hitSound.play().catch(() => {});
+                }
+            }
+
+            playSuccessSound() {
+                if (!this.gameState.isMuted) {
+                    this.successSound.currentTime = 0;
+                    this.successSound.play().catch(() => {});
+                }
+            }
+
+            render() {
+                // Clear canvas
+                this.ctx.fillStyle = '#000';
+                this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+
+                // Draw center line
+                this.ctx.setLineDash([10, 10]);
+                this.ctx.strokeStyle = '#fff';
+                this.ctx.lineWidth = 2;
+                this.ctx.beginPath();
+                this.ctx.moveTo(this.canvas.width / 2, 0);
+                this.ctx.lineTo(this.canvas.width / 2, this.canvas.height);
+                this.ctx.stroke();
+                this.ctx.setLineDash([]);
+
+                // Draw paddles
+                this.ctx.fillStyle = '#fff';
+                this.ctx.fillRect(this.player1.x, this.player1.y, this.player1.width, this.player1.height);
+                this.ctx.fillRect(this.player2.x, this.player2.y, this.player2.width, this.player2.height);
+
+                // Draw ball
+                this.ctx.beginPath();
+                this.ctx.arc(this.ball.x, this.ball.y, this.ball.radius, 0, Math.PI * 2);
+                this.ctx.fill();
+            }
+        }
+
+        // Initialize Game
+        const canvas = document.getElementById('gameCanvas');
+        const gameState = new GameState();
+        const engine = new PongEngine(canvas, gameState);
+
+        // Responsive canvas sizing
+        function resizeCanvas() {
+            const container = document.getElementById('gameContainer');
+            const isMobile = window.innerWidth <= 768;
+            
+            let width = window.innerWidth;
+            let height = isMobile ? window.innerHeight * 0.6 : window.innerHeight * 0.8;
+            
+            const aspectRatio = 4/3;
+            
+            if (width / height > aspectRatio) {
+                width = height * aspectRatio;
+            } else {
+                height = width / aspectRatio;
+            }
+            
+            const maxWidth = isMobile ? Math.min(400, width) : Math.min(800, width);
+            const maxHeight = isMobile ? Math.min(300, height) : Math.min(600, height);
+            
+            canvas.width = maxWidth;
+            canvas.height = maxHeight;
+            canvas.style.width = maxWidth + 'px';
+            canvas.style.height = maxHeight + 'px';
+            
+            engine.initializeGame();
+        }
+
+        // Game loop
+        function gameLoop() {
+            engine.update();
+            engine.render();
+            requestAnimationFrame(gameLoop);
+        }
+
+        // Event handlers
+        document.addEventListener('keydown', (e) => {
+            switch (e.code) {
+                case 'KeyW':
+                    engine.setPlayer1Direction(-1);
+                    break;
+                case 'KeyS':
+                    engine.setPlayer1Direction(1);
+                    break;
+                case 'ArrowUp':
+                    e.preventDefault();
+                    engine.setPlayer2Direction(-1);
+                    break;
+                case 'ArrowDown':
+                    e.preventDefault();
+                    engine.setPlayer2Direction(1);
+                    break;
+                case 'Space':
+                    e.preventDefault();
+                    if (gameState.phase === 'ready') {
+                        gameState.updatePhase('playing');
+                    } else if (gameState.phase === 'playing') {
+                        gameState.togglePause();
+                    } else if (gameState.phase === 'paused') {
+                        gameState.updatePhase('playing');
+                    } else if (gameState.phase === 'ended') {
+                        gameState.reset();
+                        engine.reset();
+                    }
+                    break;
+                case 'KeyR':
+                    gameState.reset();
+                    engine.reset();
+                    break;
+            }
+        });
+
+        document.addEventListener('keyup', (e) => {
+            switch (e.code) {
+                case 'KeyW':
+                case 'KeyS':
+                    engine.setPlayer1Direction(0);
+                    break;
+                case 'ArrowUp':
+                case 'ArrowDown':
+                    engine.setPlayer2Direction(0);
+                    break;
+            }
+        });
+
+        // Mobile controls
+        const startBtn = document.getElementById('startBtn');
+        const pauseBtn = document.getElementById('pauseBtn');
+        const restartBtn = document.getElementById('restartBtn');
+        const volumeBtn = document.getElementById('volumeBtn');
+        const p1Up = document.getElementById('p1Up');
+        const p1Down = document.getElementById('p1Down');
+        const p2Up = document.getElementById('p2Up');
+        const p2Down = document.getElementById('p2Down');
+
+        startBtn.addEventListener('click', () => {
+            if (gameState.phase === 'ready' || gameState.phase === 'paused') {
+                gameState.updatePhase('playing');
+            }
+        });
+
+        pauseBtn.addEventListener('click', () => {
+            gameState.togglePause();
+        });
+
+        restartBtn.addEventListener('click', () => {
+            gameState.reset();
+            engine.reset();
+        });
+
+        volumeBtn.addEventListener('click', () => {
+            gameState.toggleMute();
+        });
+
+        // Touch controls for paddles
+        const handleTouchStart = (callback) => (e) => {
+            e.preventDefault();
+            callback();
+        };
+
+        const handleTouchEnd = (callback) => (e) => {
+            e.preventDefault();
+            callback();
+        };
+
+        p1Up.addEventListener('touchstart', handleTouchStart(() => engine.setPlayer1Direction(-1)));
+        p1Up.addEventListener('mousedown', () => engine.setPlayer1Direction(-1));
+        p1Up.addEventListener('touchend', handleTouchEnd(() => engine.setPlayer1Direction(0)));
+        p1Up.addEventListener('mouseup', () => engine.setPlayer1Direction(0));
+        p1Up.addEventListener('mouseleave', () => engine.setPlayer1Direction(0));
+
+        p1Down.addEventListener('touchstart', handleTouchStart(() => engine.setPlayer1Direction(1)));
+        p1Down.addEventListener('mousedown', () => engine.setPlayer1Direction(1));
+        p1Down.addEventListener('touchend', handleTouchEnd(() => engine.setPlayer1Direction(0)));
+        p1Down.addEventListener('mouseup', () => engine.setPlayer1Direction(0));
+        p1Down.addEventListener('mouseleave', () => engine.setPlayer1Direction(0));
+
+        p2Up.addEventListener('touchstart', handleTouchStart(() => engine.setPlayer2Direction(-1)));
+        p2Up.addEventListener('mousedown', () => engine.setPlayer2Direction(-1));
+        p2Up.addEventListener('touchend', handleTouchEnd(() => engine.setPlayer2Direction(0)));
+        p2Up.addEventListener('mouseup', () => engine.setPlayer2Direction(0));
+        p2Up.addEventListener('mouseleave', () => engine.setPlayer2Direction(0));
+
+        p2Down.addEventListener('touchstart', handleTouchStart(() => engine.setPlayer2Direction(1)));
+        p2Down.addEventListener('mousedown', () => engine.setPlayer2Direction(1));
+        p2Down.addEventListener('touchend', handleTouchEnd(() => engine.setPlayer2Direction(0)));
+        p2Down.addEventListener('mouseup', () => engine.setPlayer2Direction(0));
+        p2Down.addEventListener('mouseleave', () => engine.setPlayer2Direction(0));
+
+        // Initialize
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+        gameState.updateUI();
+        gameLoop();
+
+        // Prevent zoom on touch
+        document.addEventListener('touchstart', (e) => {
+            if (e.touches.length > 1) {
+                e.preventDefault();
+            }
+        }, { passive: false });
+
+        document.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+        }, { passive: false });
+    </script>
+</body>
+</html>
